@@ -35,6 +35,8 @@ var MSG_COPY_SUCCESS = '→'.cyan + ' Copied: %s to %s';
 var MSG_SKIP_SUCCESS = '→'.cyan + ' File Exists, skipped: %s';
 var MSG_SKIP_MATCHES = '→'.cyan + ' File Matches, skipped: %s';
 var MSG_SKIP_OLDER = '→'.cyan + ' File is Old, skipped: %s';
+var MSG_LIST_SUCCESS = '↙'.yellow + ' Checked contents of bucket: %s';
+var MSG_CLEAR_SUCCESS = '✗'.red + ' Cleared bucket: %s';
 
 var MSG_UPLOAD_DEBUG = '↗'.blue + ' Upload: ' + '%s'.grey + ' to ' + '%s:%s'.cyan;
 var MSG_DOWNLOAD_DEBUG = '↙'.yellow + ' Download: ' + '%s:%s'.cyan + ' to ' + '%s'.grey;
@@ -48,6 +50,8 @@ var MSG_ERR_DOWNLOAD = 'Download error: %s (%s)';
 var MSG_ERR_DELETE = 'Delete error: %s (%s)';
 var MSG_ERR_COPY = 'Copy error: %s to %s';
 var MSG_ERR_CHECKSUM = '%s error: expected hash: %s but found %s for %s';
+var MSG_ERR_LIST = 'Content check error: cannot list %s';
+var MSG_ERR_CLEAR = 'Clear error: cannot clear %s';
 
 exports.init = function (grunt) {
   var async = grunt.util.async;
@@ -86,6 +90,55 @@ exports.init = function (grunt) {
     return knox.createClient(_.pick(options, [
       'region', 'endpoint', 'port', 'key', 'secret', 'access', 'bucket', 'secure', 'headers', 'style'
     ]));
+  };
+
+
+  /**
+   * Clear bucket before upload.
+   *
+   * @param {String} bucket The s3 bucket.
+   * @param {Object} [options] An object containing options which override any
+   *     option declared in the global s3 config.
+   */
+  exports.clearBucket = function(opts, done) {
+    var dfd = new _.Deferred();
+    var options = makeOptions(opts);
+    var headers = options.headers || {};
+    var bucket = options.bucket;
+
+    if (options.access) {
+      headers['x-amz-acl'] = options.access;
+    }
+
+    // Pick out the configuration options we need for the client.
+    var client = makeClient(options);
+    if (options.debug) {
+      return dfd.resolve(util.format(MSG_UPLOAD_DEBUG, client.bucket, src)).promise();
+    }
+    client.list({prefix:''}, function(err, res) {
+      if (err) {
+        dfd.reject(makeError(MSG_ERR_LIST, bucket, err));
+      }
+      else {
+        // dfd.resolve(util.format(MSG_LIST_SUCCESS, bucket));
+        var items = res.Contents;
+        var list = [];
+
+        for (var i = 0; i < items.length; i += 1) {
+          list.push(items[i].Key);
+        }
+
+        client.deleteMultiple(list, function (err, res) {
+          if (err || res.statusCode !== 200) {
+            dfd.reject(makeError(MSG_ERR_CLEAR, bucket, err || res.statusCode));
+          }
+          else {
+            dfd.resolve(util.format(MSG_CLEAR_SUCCESS, bucket));
+          }
+        });
+      }
+    });
+    return dfd.promise();
   };
 
   /**

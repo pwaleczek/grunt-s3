@@ -57,23 +57,35 @@ S3Task.prototype = {
       async.forEachLimit.bind(async,transfers,config.maxOperations) :
       async.forEach.bind(async,transfers);
 
-    eachTransfer(function (transferFn, completed){
-      var transfer = transferFn();
+    var eachTransferFn = [
+      function (transferFn, completed) {
+        var transfer = transferFn();
 
-      transfer.done(function (msg) {
+        transfer.done(function (msg) {
+          grunt.log.ok(msg);
+          completed();
+        });
+
+        transfer.fail(function (msg) {
+          grunt.log.error(msg);
+          ++errors;
+          completed();
+        });
+
+      }, function () {
+        done(!errors);
+      }
+    ]
+
+    if (config.clearBucket) {
+      s3.clearBucket(_.defaults(config)).done(function(msg) {
         grunt.log.ok(msg);
-        completed();
+        eachTransfer.apply(null, eachTransferFn);
       });
-
-      transfer.fail(function (msg) {
-        grunt.log.error(msg);
-        ++errors;
-        completed();
-      });
-
-    }, function () {
-      done(!errors);
-    });
+    }
+    else {
+      eachTransfer.apply(null, eachTransferFn);
+    }
   },
 
   _parseUploadFiles: function (upload, config) {
@@ -137,7 +149,8 @@ S3Task.prototype = {
       debug: false,
       verify: false,
       maxOperations: 0,
-      encodePaths: false
+      encodePaths: false,
+      clearBucket: false
     };
 
     // Grab the actions to perform from the task data, default to empty arrays
