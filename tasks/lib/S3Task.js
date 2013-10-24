@@ -75,7 +75,7 @@ S3Task.prototype = {
       }, function () {
         done(!errors);
       }
-    ]
+    ];
 
     if (config.clearBucket) {
       s3.clearBucket(_.defaults(config)).done(function(msg) {
