@@ -115,7 +115,10 @@ exports.init = function (grunt) {
     if (options.debug) {
       return dfd.resolve(util.format(MSG_UPLOAD_DEBUG, client.bucket, src)).promise();
     }
-    client.list({prefix:''}, function(err, res) {
+
+    var prefix = (typeof options.clearBucket !== 'string') ? '' : options.clearBucket;
+
+    client.list({ prefix: prefix }, function(err, res) {
       if (err) {
         dfd.reject(makeError(MSG_ERR_LIST, bucket, err));
       }

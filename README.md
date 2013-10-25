@@ -42,7 +42,7 @@ A quick reference of options
 * **region** - (*string*) An Amazon AWS region (see http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region)
 * **maxOperations** - (*number*) max number of concurrent transfers - if not specified or set to 0, will be unlimited.
 * **encodePaths** - (*boolean*) if set to true, will encode the uris of destinations to prevent 505 errors. Default: false
-* **clearBucket**  - (*boolean*) if true, all files in the bucket will be deleted. Default: false.
+* **clearBucket**  - (*boolean* | *string*) if true, all files in the bucket will be deleted. If string, it is used as a prefix of files to remove i.e. `test` will remove all files having 'test' in the path. Default: false.
 * **headers** - (*object*) An object containing any headers you would like to send along with the
 transfers i.e. `{ 'X-Awesomeness': 'Out-Of-This-World', 'X-Stuff': 'And Things!' }`
 * **access** - (*string*) A specific Amazon S3 ACL. Available values: `private`, `public-read`, `
