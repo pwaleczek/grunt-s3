@@ -37,6 +37,7 @@ var MSG_SKIP_MATCHES = '→'.cyan + ' File Matches, skipped: %s';
 var MSG_SKIP_OLDER = '→'.cyan + ' File is Old, skipped: %s';
 var MSG_LIST_SUCCESS = '↙'.yellow + ' Checked contents of bucket: %s';
 var MSG_CLEAR_SUCCESS = '✗'.red + ' Cleared bucket: %s';
+var MSG_CLEAR_NOT_NEEDED = '→'.cyan + ' All clean: %s';
 
 var MSG_UPLOAD_DEBUG = '↗'.blue + ' Upload: ' + '%s'.grey + ' to ' + '%s:%s'.cyan;
 var MSG_DOWNLOAD_DEBUG = '↙'.yellow + ' Download: ' + '%s:%s'.cyan + ' to ' + '%s'.grey;
@@ -116,15 +117,18 @@ exports.init = function (grunt) {
       return dfd.resolve(util.format(MSG_UPLOAD_DEBUG, client.bucket, src)).promise();
     }
 
-    var prefix = (typeof options.clearBucket !== 'string') ? '' : options.clearBucket;
+    var prefix = (typeof options.clearBucket !== 'string') ? '' : options.clearBucket.toString();
 
     client.list({ prefix: prefix }, function(err, res) {
+      var items = res.Contents;
+
       if (err) {
-        dfd.reject(makeError(MSG_ERR_LIST, bucket, err));
+        return dfd.reject(makeError(MSG_ERR_LIST, bucket, err));
       }
-      else {
-        // dfd.resolve(util.format(MSG_LIST_SUCCESS, bucket));
-        var items = res.Contents;
+
+      if (items.length > 0) {
+        dfd.resolve(util.format(MSG_LIST_SUCCESS, bucket));
+
         var list = [];
 
         for (var i = 0; i < items.length; i += 1) {
@@ -132,6 +136,7 @@ exports.init = function (grunt) {
         }
 
         client.deleteMultiple(list, function (err, res) {
+
           if (err || res.statusCode !== 200) {
             dfd.reject(makeError(MSG_ERR_CLEAR, bucket, err || res.statusCode));
           }
@@ -139,6 +144,9 @@ exports.init = function (grunt) {
             dfd.resolve(util.format(MSG_CLEAR_SUCCESS, bucket));
           }
         });
+      }
+      else {
+        dfd.resolve(util.format(MSG_CLEAR_NOT_NEEDED, bucket));
       }
     });
     return dfd.promise();
